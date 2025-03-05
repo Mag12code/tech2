@@ -14,7 +14,7 @@ pipeline {
         // Stage 1: Checkout code from GitHub
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/your-repo/your-app.git'
+                git branch: 'main', url: 'git@github.com:Mag12code/tech2.git'
             }
         }
 
