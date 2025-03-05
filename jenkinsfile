@@ -1,0 +1,66 @@
+pipeline {
+    agent any
+
+    environment {
+        // Replace these placeholders with your actual values
+        AWS_ACCOUNT_ID = 'AKIAU6VTTGH73QWFC7TY'
+        AWS_REGION = 'us-east-2'
+        ECR_REPO = '340752806399.dkr.ecr.us-east-2.amazonaws.com/tech2'
+        CLUSTER_NAME = 'arn:aws:eks:us-east-2:340752806399:cluster/tech2'
+        DOCKER_IMAGE = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${env.BUILD_ID}"
+    }
+
+    stages {
+        // Stage 1: Checkout code from GitHub
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/your-repo/your-app.git'
+            }
+        }
+
+        // Stage 2: Build Docker image
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    docker.build(DOCKER_IMAGE)
+                }
+            }
+        }
+
+        // Stage 3: Push Docker image to Amazon ECR
+        stage('Push to ECR') {
+            steps {
+                script {
+                    // Authenticate Docker to ECR
+                    sh """
+                        aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                    """
+                    // Push the Docker image
+                    docker.image(DOCKER_IMAGE).push()
+                }
+            }
+        }
+
+        // Stage 4: Deploy to EKS
+        stage('Deploy to EKS') {
+            steps {
+                script {
+                    // Use kubectl to update the deployment
+                    sh """
+                        kubectl set image deployment/<your-deployment-name> <container-name>=${DOCKER_IMAGE} --record
+                    """
+                }
+            }
+        }
+    }
+
+    // Post-build actions (optional)
+    post {
+        success {
+            echo 'Pipeline succeeded!'
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
+    }
+}
